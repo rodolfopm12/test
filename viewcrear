@@ -1,0 +1,98 @@
+class CrearExpediente(CreateView):
+    model = Expediente
+    template_name = 'crear_expediente.html'
+    form_class = ExpedienteForm
+    second_form_class = UserForm
+    third_form_class = ProfileForm
+    four_form_class = DoctorandoForm
+    five_form_class = CentroTrabajoForm
+    six_form_class = TesisForm
+    seven_form_class = TutorForm
+    success_url = reverse_lazy('expediente:listar_expedientes')
+
+    def get_context_data(self, **kwargs):
+        context = super(CrearExpediente, self).get_context_data(**kwargs)
+        context['title'] = 'Hoja Anexo 2'
+        context['crear_url'] = reverse_lazy('crear_expediente')
+        context['etiqueta'] = 'Crear Expediente'
+        context['entidad'] = 'Expedientes'
+        context['list_url'] = reverse_lazy('listar_expedientes')
+        context['action'] = 'crear'
+        if 'form' not in context:
+            context['form'] = self.form_class(self.request.GET)
+        if 'form2' not in context:
+            context['form2'] = self.second_form_class(self.request.GET)
+        if 'form3' not in context:
+            context['form3'] = self.third_form_class(self.request.GET)
+        if 'form4' not in context:
+            context['form4'] = self.four_form_class(self.request.GET)
+        if 'form5' not in context:
+            context['form5'] = self.five_form_class(self.request.GET)
+        if 'form6' not in context:
+            context['form6'] = self.six_form_class(self.request.GET)
+        if 'form7' not in context:
+            context['form7'] = self.seven_form_class(self.request.GET)
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object
+        form = self.form_class(request.POST)
+        form2 = self.second_form_class(request.POST)
+        form3 = self.third_form_class(request.POST)
+        form4 = self.four_form_class(request.POST)
+        form5 = self.five_form_class(request.POST)
+        form6 = self.six_form_class(request.POST)
+        form7 = self.seven_form_class(request.POST)
+        if form.is_valid() and form2.is_valid() and form3.is_valid() and form4.is_valid() and form5.is_valid() and form6.is_valid() and form7.is_valid():
+            expediente = form.save(commit=False)
+            # expediente_user = form2.save(commit=False)
+            expediente_profile = form3.save(commit=False)
+            expediente_datos = form4.save(commit=False)
+            expediente__centro_trabajo = form5.save(commit=False)
+            expediente__tesis = form6.save(commit=False)
+            expediente__tutor = form7.save(commit=False)
+            expediente.save()
+            user = form2.save(commit=False)
+            user.is_active = False
+            password = User.objects.make_random_password(15)
+            user.save()
+            group = Group.objects.get(pk=3)
+            user.groups.add(group)
+            user.save()
+            current_site = get_current_site(request)
+            mail_subject = 'Activa tu cuenta.'
+            message = render_to_string('acc_active_email.html', {
+                'user': user,
+                'domain': current_site.domain,
+                'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+                'token': account_activation_token.make_token(user),
+            })
+            to_email = form.cleaned_data.get('email')
+            email = EmailMessage(
+                mail_subject, message, to=[to_email]
+            )
+            email.send()
+            return HttpResponse(
+                'Confirme su dirección de correo electrónico para completar el registro.') + HttpResponseRedirect(
+                self.get_success_url())
+            # return HttpResponseRedirect(self.get_success_url())
+        else:
+            return self.render_to_response(
+                self.get_context_data(form=form, form2=form2, form3=form3, form4=form4, form5=form5, form7=form7))
+
+def load_pais(request):
+    continente_id = request.GET.get('continente')
+    paises = Pais.objects.filter(continente_id=continente_id).order_by('nombre')
+    return render(request, 'hr/pais_dropdown_list.html', {'paises': paises})
+
+
+def load_estado(request):
+    pais_id = request.GET.get('pais')
+    provincias = Provincia.objects.filter(pais_id=pais_id).order_by('nombre')
+    return render(request, 'hr/estado_dropdown_list.html', {'provincias': provincias})
+
+
+def load_municipio(request):
+    provincia_id = request.GET.get('provincia')
+    municipios = Municipio.objects.filter(provincia_id=provincia_id).order_by('nombre')
+    return render(request, 'hr/municipio_dropdown_list.html', {'municipios': municipios})
