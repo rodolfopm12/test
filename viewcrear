@@ -1,3 +1,51 @@
+# -*- coding: utf-8 -*-
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.http import HttpResponseRedirect, request
+from django.shortcuts import render, redirect
+from django.contrib.auth.base_user import BaseUserManager
+from django.contrib.auth import login, authenticate
+from django.http import HttpResponse
+from .tokens import account_activation_token
+from django.contrib.sites.shortcuts import get_current_site
+from django.contrib.auth.models import User, Group
+from django.template.loader import render_to_string
+from django.core.mail import EmailMessage
+from django.utils.encoding import force_bytes, force_text
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+# Create your views here.
+from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.views.generic import ListView, UpdateView, CreateView, DeleteView, View
+from apps.expediente.models import *
+
+from apps.expediente.forms import ExpedienteForm, DoctorandoForm, \
+    CategoriaInvestigadorForm, EspecialidadForm, \
+    TesisForm, TutorForm, CentroTrabajoForm, UserForm, ProfileForm
+
+
+def activate(request, uidb64, token):
+    try:
+        uid = force_text(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except(TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    if user is not None and account_activation_token.check_token(user, token):
+        user.is_active = True
+        user.save()
+        login(request, user)
+        return HttpResponse(
+            'Gracias por su correo electrónico de confirmación. Ahora puede iniciar sesión en su cuenta.')
+    else:
+        return HttpResponse('El enlace de activación no es válido.!')
+
+
+# ----------------------------------------------------------------------------------------------------
+# -----------------------Crear Expediente-------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------
 class CrearExpediente(CreateView):
     model = Expediente
     template_name = 'crear_expediente.html'
